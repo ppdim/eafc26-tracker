@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EA FC26 Tracker (Offline)</title>
+  <style>
+    :root{--bg:#0f1115;--panel:#151922;--muted:#8892a6;--text:#e5e7eb;--accent:#60a5fa;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;--border:#1f2430}
+    *{box-sizing:border-box}html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica Neue,Arial;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(21,25,34,.98),rgba(21,25,34,.9));border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    header h1{font-size:16px;margin:0 8px 0 0;font-weight:600;letter-spacing:.2px}
+    .tag{background:#0b0e14;border:1px solid var(--border);border-radius:12px;padding:6px 10px;font-size:12px;color:var(--muted)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    select,input,textarea{background:#0b0e14;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px;outline:none;font-size:14px}
+    button{background:#0b0e14;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:14px;cursor:pointer}
+    button.primary{background:linear-gradient(180deg,#1e293b,#0b0e14);border-color:#233145}button:hover{border-color:#2b364a}
+    .container{max-width:1240px;margin:14px auto;padding:0 14px}
+    .tabs{display:flex;gap:8px;margin:10px 0 14px}.tab{padding:8px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--muted)}
+    .tab.active{color:var(--text);border-color:#334155;background:#0b0e14}
+    .cards{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}.card{grid-column:span 12;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+    @media(min-width:860px){.card.half{grid-column:span 6}}
+    .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}.kpi .box{background:#0b0e14;border:1px solid var(--border);border-radius:12px;padding:10px 12px;min-height:56px;display:flex;flex-direction:column;justify-content:center}
+    table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top}th{text-align:left;color:var(--muted);cursor:pointer}
+    tr:hover td{background:#0d1117}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;font-size:12px}
+    .pill.win{border-color:rgba(34,197,94,.4);color:#86efac}.pill.lose{border-color:rgba(239,68,68,.4);color:#fca5a5}.pill.draw{border-color:rgba(245,158,11,.4);color:#fcd34d}
+    .muted{color:var(--muted)}.right{justify-content:flex-end}.space{flex:1}.search{min-width:200px}.list-badges{display:flex;flex-wrap:wrap;gap:6px}.hidden{display:none}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{width:min(980px,94vw);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}.modal h3{margin:0 0 10px 0}
+    .grid{display:grid;grid-template-columns:1fr;gap:8px}@media(min-width:760px){.grid.cols-2{grid-template-columns:1fr 1fr}.grid.cols-3{grid-template-columns:1fr 1fr 1fr}}
+    .section{border:1px dashed var(--border);border-radius:12px;padding:10px}.mini{font-size:12px}.nowrap{white-space:nowrap}.clickable{cursor:pointer}
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="title">EA FC26 Tracker</h1>
+    <span class="tag" id="matchCountTag">0</span>
+    <div class="row">
+      <label class="muted mini" for="modeFilter" data-i18n="label_mode">Режим:</label>
+      <select id="modeFilter">
+        <option value="ALL" data-i18n="mode_all">Все</option>
+        <option value="RIVALS">Rivals</option>
+        <option value="CHAMPIONS">Champions</option>
+        <option value="TOURNAMENTS">Tournaments</option>
+        <option value="LIVE_EVENTS">Live Events</option>
+        <option value="GAUNTLETS">Gauntlets</option>
+        <option value="RUSH">Rush</option>
+      </select>
+      <input id="searchInput" class="search" placeholder="Поиск: соперник/заметки/соревнование" data-i18n-placeholder="search_ph">
+    </div>
+    <div class="space"></div>
+    <div class="row right">
+      <button id="btnAddMatch" class="primary" data-i18n="add_match">+ Матч</button>
+      <button id="btnExportJson" data-i18n="export_json">Экспорт JSON</button>
+      <button id="btnExportCsvMatches" data-i18n="csv_matches">CSV Матчи</button>
+      <button id="btnExportCsvPlayers" data-i18n="csv_players">CSV Игроки</button>
+      <button id="btnImport" data-i18n="import">Импорт</button>
+      <select id="langSwitcher" title="Language">
+        <option value="ru">RU</option>
+        <option value="en">EN</option>
+      </select>
+      <input type="file" id="fileInput" accept=".json" class="hidden">
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-tab="matches" data-i18n="tab_matches">Матчи</div>
+      <div class="tab" data-tab="players" data-i18n="tab_players">Игроки</div>
+      <div class="tab" data-tab="competitions" data-i18n="tab_competitions">Соревнования</div>
+    </div>
+
+    <div class="cards" id="dashCards">
+      <div class="card half">
+        <h3 class="muted mini" data-i18n="form20">Форма (последние 20)</h3>
+        <div class="kpi" id="form20"></div>
+      </div>
+      <div class="card half">
+        <h3 class="muted mini" data-i18n="streaks">Рекорды серий</h3>
+        <div class="kpi" id="streaks"></div>
+      </div>
+    </div>
+
+    <div class="cards" id="tabMatches">
+      <div class="card">
+        <table id="matchesTable">
+          <thead>
+            <tr>
+              <th data-sort="date" data-i18n="th_date">Дата</th>
+              <th data-i18n="th_mode_stage">Режим / Стадия</th>
+              <th data-i18n="th_comp">Соревнование</th>
+              <th data-sort="score" data-i18n="th_score">Счёт</th>
+              <th data-sort="result" data-i18n="th_result">Исход</th>
+              <th>ET</th>
+              <th>Pens</th>
+              <th>MVP</th>
+              <th data-i18n="th_goals">Голы</th>
+              <th data-i18n="th_assists">Ассисты</th>
+              <th data-i18n="th_notes">Заметки</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cards hidden" id="tabPlayers">
+      <div class="card">
+        <div class="row" style="margin-bottom:10px">
+          <label class="muted mini" data-i18n="section">Раздел:</label>
+          <select id="playersView">
+            <option value="ALL" data-i18n="players_overall">Общая статистика</option>
+            <option value="BY_MODE" data-i18n="players_by_mode">По режимам</option>
+          </select>
+          <label class="muted mini" data-i18n="position">Позиция:</label>
+          <select id="positionFilter">
+            <option value="" data-i18n="all">Все</option>
+            <option>ST</option><option>CF</option><option>LW</option><option>RW</option>
+            <option>CAM</option><option>CM</option><option>CDM</option>
+            <option>LB</option><option>RB</option><option>CB</option>
+            <option>GK</option>
+          </select>
+          <label class="muted mini" data-i18n="modeView">Режим:</label>
+          <select id="playersMode">
+            <option value="ALL" data-i18n="all">Все</option>
+            <option value="RIVALS">Rivals</option>
+            <option value="CHAMPIONS">Champions</option>
+            <option value="TOURNAMENTS">Tournaments</option>
+            <option value="LIVE_EVENTS">Live Events</option>
+            <option value="GAUNTLETS">Gauntlets</option>
+            <option value="RUSH">Rush</option>
+          </select>
+        </div>
+        <table id="playersTable">
+          <thead>
+            <tr>
+              <th data-sort="name" data-i18n="player">Игрок</th>
+              <th data-sort="matches" class="nowrap" data-i18n="matches">Матчи</th>
+              <th data-sort="goals" data-i18n="goals">Голы</th>
+              <th data-sort="assists" data-i18n="assists">Ассисты</th>
+              <th data-sort="mvp">MVP</th>
+              <th data-sort="ga">G+A</th>
+              <th data-sort="gapm">G+A/матч</th>
+              <th data-i18n="mode">Режим</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cards hidden" id="tabCompetitions">
+      <div class="card half">
+        <h3 class="muted mini" data-i18n="comp_overall_title">Соревновательные режимы — общая</h3>
+        <div class="kpi" id="compOverall"></div>
+      </div>
+      <div class="card half">
+        <h3 class="muted mini" data-i18n="by_modes_title">По режимам (Rivals / Champions / Tournaments / Live Events / Gauntlets)</h3>
+        <table id="modesTable">
+          <thead>
+            <tr>
+              <th data-i18n="mode">Режим</th><th data-i18n="matches">Матчи</th><th>W</th><th>D</th><th>L</th><th>Win%</th><th>GF</th><th>GA</th><th>GF avg</th><th>GA avg</th>
+              <th>ET W</th><th>ET L</th><th>Pens</th><th>Pens W</th><th>Pens L</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <h3 class="muted mini" data-i18n="tournaments_title">Турниры/ивенты (агрегировано)</h3>
+          <div class="row">
+            <label class="mini muted" data-i18n="pick_tournament">Выбор турнира:</label>
+            <select id="tournamentPicker"><option value="">—</option></select>
+          </div>
+        </div>
+        <table id="tournamentsTable">
+          <thead>
+            <tr>
+              <th data-i18n="tournament">Турнир/ивент</th><th data-i18n="matches">Матчи</th><th>W</th><th>D</th><th>L</th><th>Win%</th><th>GF</th><th>GA</th><th>GF avg</th><th>GA avg</th>
+              <th>ET W</th><th>ET L</th><th>Pens</th><th>Pens W</th><th>Pens L</th><th data-i18n="last_stage">Последняя стадия</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3 class="muted mini" data-i18n="matches_of_pick">Матчи выбранного турнира/ивента</h3>
+        <table id="tournamentMatches">
+          <thead>
+            <tr>
+              <th data-i18n="th_date">Дата</th><th data-i18n="th_stage">Стадия</th><th data-i18n="th_score">Счёт</th><th data-i18n="th_result">Исход</th><th>ET</th><th>Pens</th><th>Pens счёт</th><th>MVP</th><th data-i18n="th_goals">Голы</th><th data-i18n="th_assists">Ассисты</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 id="modalTitle" data-i18n="match">Матч</h3>
+        <button id="btnCloseModal">✕</button>
+      </div>
+      <div id="modalBody"></div>
+      <div class="row right" style="margin-top:10px">
+        <button id="btnSaveModal" class="primary" data-i18n="save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
